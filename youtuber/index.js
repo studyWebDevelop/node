@@ -41,6 +41,10 @@ app.get("/youtuber/:id", (req, res) => {
   }
 });
 
+app.get("/youtubers", (req, res) => {
+  res.json(Array.from(db.values()));
+});
+
 app.get("/:nickname", (req, res) => {
   const { nickname } = req.params;
 
