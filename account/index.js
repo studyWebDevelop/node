@@ -51,13 +51,14 @@ app.get("/users/:id", (req, res) => {
 app.delete("/users/:id", (req, res) => {
   const { id } = req.params;
 
-  console.log("db", db);
-
   if (!db.has(Number(id)))
     res.status(400).json({ message: "존재하지 않는 유저입니다." });
 
+  res
+    .status(200)
+    .json({ message: `${db.get(Number(id)).name}님 다음에 또 뵙겠습니다!` });
+
   db.delete(Number(id));
-  res.status(200).json({ message: "회원탈퇴가 완려되었습니다." });
 });
 
 app.listen(port, () => {
