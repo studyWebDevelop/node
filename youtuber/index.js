@@ -31,20 +31,6 @@ db.set(1, youtuber1);
 db.set(2, youtuber2);
 db.set(3, youtuber3);
 
-// app.get("/:nickname", (req, res) => {
-//   const { nickname } = req.params;
-
-//   if (nickname === "@15ya_egg") {
-//     res.json(youtuber1);
-//   } else if (nickname === "@ChimChakMan_Official") {
-//     res.json(youtuber2);
-//   } else if (nickname === "@서재로36") {
-//     res.json(youtuber3);
-//   } else {
-//     res.json({ message: "저는 모르는 유튜버 입니다." });
-//   }
-// });
-
 app.get("/youtubers", (req, res) => {
   let youtubers = {};
 
@@ -52,7 +38,11 @@ app.get("/youtubers", (req, res) => {
     youtubers[key] = value;
   });
 
-  res.json(youtubers);
+  if (db.size > 0) {
+    res.status(200).json(youtubers);
+  } else {
+    res.status(200).json({ message: "조회할 유튜버가 없습니다." });
+  }
 });
 
 app.get("/youtubers/:id", (req, res) => {
@@ -61,7 +51,7 @@ app.get("/youtubers/:id", (req, res) => {
   if (db.has(Number(id))) {
     res.json(db.get(Number(id)));
   } else {
-    res.json({ message: "존재하지 않는 유튜버입니다." });
+    res.status(200).json({ message: "존재하지 않는 유튜버입니다." });
   }
 });
 
@@ -77,15 +67,19 @@ app.post("/youtubers", (req, res) => {
   db.set(db.size + 1, newYoutuber);
 
   console.log("db", db);
-  res.json(db.get(db.size));
+  if (channelTitle && sub && videoNum) {
+    res.status(201).json(db.get(db.size));
+  } else {
+    res.status(400).json({ message: "요청할 값을 제대로 입력해주세요. " });
+  }
 });
 
 app.delete("/youtubers", (req, res) => {
   if (db.size > 0) {
     db.clear();
-    res.json({ message: "모든 유튜버가 삭제되었습니다." });
+    res.status(200).json({ message: "모든 유튜버가 삭제되었습니다." });
   } else {
-    res.json({ message: "삭제할 유튜버가 없습니다." });
+    res.status(200).json({ message: "삭제할 유튜버가 없습니다." });
   }
 });
 
@@ -93,10 +87,10 @@ app.delete("/youtubers/:id", (req, res) => {
   const { id } = req.params;
 
   if (db.has(Number(id))) {
-    res.json(`${id}번 유튜버가 삭제되었습니다.`);
+    res.status(200).json(`${id}번 유튜버가 삭제되었습니다.`);
     db.delete(Number(id));
   } else {
-    res.json({ message: "유튜버가 존재하지 않습니다." });
+    res.status(200).json({ message: "유튜버가 존재하지 않습니다." });
   }
 
   console.log("db", db);
@@ -104,19 +98,20 @@ app.delete("/youtubers/:id", (req, res) => {
 
 app.put("/youtubers/:id", (req, res) => {
   const { id } = req.params;
+  const { channelTitle, sub, videoNum } = req.body;
 
-  if (db.has(Number(id))) {
+  if (db.has(Number(id)) && channelTitle && sub && videoNum) {
     const updatedYoutuber = { ...db.get(Number(id)), ...req.body };
 
     db.set(Number(id), updatedYoutuber);
     console.log("db", db);
 
-    res.json({
+    res.status(200).json({
       data: updatedYoutuber,
       message: `${id}번 유튜버의 정보가 수정되었습니다.`,
     });
   } else {
-    res.json({ message: "유튜버가 존재하지 않습니다." });
+    res.status(400).json({ message: "요청할 값을 제대로 입력해 주세요." });
   }
 });
 
