@@ -7,8 +7,41 @@ app.use(express.json());
 let db = new Map();
 let id = 0;
 
+const isEmpty = (obj) => {
+  if (Object.keys(obj).length !== 0) return false;
+  return true;
+};
+
 // 로그인
-app.post("/login", (req, res) => {});
+app.post("/login", (req, res) => {
+  const { userId, password } = req.body;
+
+  if (isEmpty(db)) {
+    return res.status(401).json({ message: "회원이 존재하지 않습니다." });
+  }
+
+  if (!userId || !password) {
+    return res
+      .status(400)
+      .json({ message: "요청할 값을 제대로 입력해주세요." });
+  }
+
+  let isUserLogin = false;
+
+  db.forEach((user, idx) => {
+    if (user.userId === userId && user.password === password) {
+      isUserLogin = true;
+    }
+  });
+
+  if (isUserLogin) {
+    return res.status(200).json({ message: "로그인 성공!" });
+  } else {
+    return res
+      .status(401)
+      .json({ message: "아이디/비밀번호가 일치하지 않습니다." });
+  }
+});
 
 // 회원가입
 app.post("/join", (req, res) => {
@@ -19,6 +52,7 @@ app.post("/join", (req, res) => {
 
   db.set(id, { userId, password, name });
   id++;
+
   res.status(201).json({ message: `${name}님 환영합니다!` });
 
   console.log("db", db);
