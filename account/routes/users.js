@@ -23,7 +23,7 @@ router.post("/login", (req, res) => {
 
   let isUserLogin = false;
 
-  db.forEach((user, idx) => {
+  db.forEach((user) => {
     if (user.userId === userId && user.password === password) {
       isUserLogin = true;
     }
@@ -38,6 +38,7 @@ router.post("/login", (req, res) => {
   }
 });
 
+// 파라미터로 구분가능 ( db에 저장시킬때 {0, { userId, password, name }} ) 이런식으로 작성함
 // 회원가입
 router.post("/join", (req, res) => {
   const { userId, password, name } = req.body;
