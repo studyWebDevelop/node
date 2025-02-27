@@ -1,94 +1,85 @@
 const express = require("express");
 const router = express.Router();
-const isEmpty = require("../utils/isEmpty");
+const conn = require("../mariadb");
 
 router.use(express.json());
 
-let db = new Map();
-let id = 0;
-
 // 로그인
 router.post("/login", (req, res) => {
-  const { userId, password } = req.body;
+  const { email, password } = req.body;
 
-  if (isEmpty(db)) {
-    return res.status(401).json({ message: "회원이 존재하지 않습니다." });
-  }
+  const sql = "SELECT * FROM users WHERE email = ?";
 
-  if (!userId || !password) {
+  if (!email || !password) {
     return res
       .status(400)
       .json({ message: "요청할 값을 제대로 입력해주세요." });
   }
 
-  let isUserLogin = false;
+  conn.query(sql, [email], (err, results) => {
+    let loginUser = results[0];
 
-  db.forEach((user) => {
-    if (user.userId === userId && user.password === password) {
-      isUserLogin = true;
+    if (!loginUser) res.status(404).json({ message: "회원 정보가 없습니다." });
+
+    if (loginUser.password === password) {
+      return res.status(200).json({ message: "로그인 성공!" });
+    } else {
+      return res.status(401).json({ message: "비밀번호가 일치하지 않습니다." });
+    }
+  });
+});
+
+// 회원가입
+router.post("/join", (req, res) => {
+  const { email, name, password, contact } = req.body;
+
+  if (!email || !name || !password || !contact)
+    res.status(400).json({ message: "요청할 값을 제대로 입력해주세요." });
+
+  const sql =
+    "INSERT INTO users(email, name, password, contact) VALUES (?, ?, ?, ?)";
+
+  conn.query(sql, [email, name, password, contact], (err, results) => {
+    if (results.length) {
+      return res.status(200).json(results);
+    } else {
+      return res.status(404).json({ message: "회원 정보가 없습니다." });
     }
   });
 
-  if (isUserLogin) {
-    return res.status(200).json({ message: "로그인 성공!" });
-  } else {
-    return res
-      .status(401)
-      .json({ message: "아이디/비밀번호가 일치하지 않습니다." });
-  }
-});
-
-// 파라미터로 구분가능 ( db에 저장시킬때 {0, { userId, password, name }} ) 이런식으로 작성함
-// 회원가입
-router.post("/join", (req, res) => {
-  const { userId, password, name } = req.body;
-
-  if (!userId || !password || !name)
-    res.status(400).json({ message: "요청할 값을 제대로 입력해주세요." });
-
-  db.set(id, { userId, password, name });
-  id++;
-
   res.status(201).json({ message: `${name}님 환영합니다!` });
-
-  console.log("db", db);
 });
 
 // 회원 전체 조회
 router.get("/users", (req, res) => {
-  if (db.size < 1) res.status(200).json({ message: "조회할 유저가 없습니다." });
+  const { email } = req.body;
 
-  let users = {};
+  const sql = "SELECT * FROM users WHERE email=?";
 
-  db.forEach((user, idx) => {
-    users[idx] = user;
+  conn.query(sql, [email], (err, results) => {
+    if (results.length) {
+      return res.status(200).json(results);
+    } else {
+      return res.status(404).json({ message: "회원 정보가 없습니다." });
+    }
   });
-
-  res.status(200).json(users);
-});
-
-// 회원 개별 조회
-router.get("/users/:id", (req, res) => {
-  const { id } = req.params;
-
-  if (!db.has(Number(id)))
-    res.status(400).json({ message: "존재하지 않는 유저입니다." });
-
-  res.status(200).json(db.get(Number(id)));
 });
 
 // 회원 탈퇴
-router.delete("/users/:id", (req, res) => {
-  const { id } = req.params;
+router.delete("/users", (req, res) => {
+  const { email } = req.body;
 
-  if (!db.has(Number(id)))
-    res.status(400).json({ message: "존재하지 않는 유저입니다." });
+  const sql = "DELETE FROM users where email=?";
 
-  res
-    .status(200)
-    .json({ message: `${db.get(Number(id)).name}님 다음에 또 뵙겠습니다!` });
-
-  db.delete(Number(id));
+  conn.query(sql, [email], (err, results) => {
+    if (results) {
+      return res.status(200).json({
+        message: `${email}님 다음에 또 뵙겠습니다!`,
+      });
+    } else {
+      return res.status(404).json({ message: "회원 정보가 없습니다." });
+    }
+  });
 });
 
 module.exports = router;
