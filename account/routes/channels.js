@@ -1,19 +1,10 @@
 const express = require("express");
 const router = express.Router();
 const conn = require("../mariadb");
-const { body, validationResult } = require("express-validator");
+const { body } = require("express-validator");
+const validationErrors = require("../middleware/index");
 
 router.use(express.json());
-
-const validationErrors = (req, res, next) => {
-  const errors = validationResult(req);
-
-  if (!errors.isEmpty()) {
-    return res.status(400).json(errors.array());
-  }
-
-  next();
-};
 
 const validationChannels = [
   [
@@ -111,6 +102,7 @@ router
   });
 
 router.use((err, req, res, next) => {
+  // err, req, res, next가 매개변수에 존재한다면 에러처리 미들웨어로 인식함.
   console.error(err);
   res.status(500).json({ message: "서버 오류가 발생했습니다." });
 });
