@@ -1,77 +1,92 @@
 const express = require("express");
 const router = express.Router();
 const conn = require("../mariadb");
+const { body, validationResult } = require("express-validator");
 
 router.use(express.json());
 
-const notFoundChannel = (res) => {
-  res.status(404).json({ message: "채널정보를 찾을 수 없습니다." });
+const validationErrors = (req, res, next) => {
+  const errors = validationResult(req);
+
+  if (!errors.isEmpty()) {
+    return res.status(400).json(errors.array());
+  }
+
+  next();
+};
+
+const validationChannels = [
+  [
+    body("userId").notEmpty().isInt().withMessage("숫자를 입력해주세요."),
+    body("channelTitle")
+      .notEmpty()
+      .isString()
+      .withMessage("문자를 입력해주세요."),
+  ],
+  validationErrors,
+];
+
+const validationEditChannel = [
+  body("channelTitle")
+    .notEmpty()
+    .isString()
+    .withMessage("문자를 입력해주세요."),
+  validationErrors,
+];
+
+const getChannelUseId = (id, callback) => {
+  const sql = "SELECT * FROM channels WHERE id = ?";
+
+  conn.query(sql, [id], (err, results) => {
+    if (err) return callback(err);
+    callback(null, results);
+  });
 };
 
 router
   .route("/")
-  .post((req, res) => {
+  .post(validationChannels, (req, res, next) => {
     const { userId, channelTitle } = req.body;
-
-    if (!channelTitle) {
-      return res.status(400).json({ message: "채널이름을 입력하세요." });
-    }
 
     const sql = "INSERT INTO channels(user_id, name) VALUES (?, ?)";
 
-    conn.query(sql, [userId, channelTitle], (err, results) => {
-      if (!results)
-        res.status(500).json({ message: "채널 등록에 실패했어요." });
-
+    conn.query(sql, [userId, channelTitle], (err) => {
+      if (err) return next(err);
       res
         .status(201)
-        .json({ message: `${channelTitle}님의 채널을 응원합니다. ` });
+        .json({ message: `${channelTitle}님의 채널을 응원합니다.` });
     });
   })
   .get((req, res) => {
-    let { id } = req.body;
-
     const sql = "SELECT * FROM channels";
 
-    conn.query(sql, [id], (err, results) => {
-      if (results.length < 0) notFoundChannel(res);
-
+    conn.query(sql, (err, results) => {
+      if (err) return next(err);
       res.status(201).json(results);
     });
   });
 
 router
   .route("/:id")
-  .put((req, res) => {
+  .put(validationEditChannel, (req, res, next) => {
     const { id } = req.params;
     const { channelTitle } = req.body;
 
-    if (!channelTitle) {
-      return res.status(400).json({ message: "채널 이름을 입력하세요." });
-    }
-
     const sql = "UPDATE channels SET name = ? WHERE id = ?";
 
-    conn.query(sql, [channelTitle, id], (err, results) => {
-      if (results.affectedRows === 0) {
-        return res.status(404).json({ message: "채널을 찾을 수 없습니다." });
-      }
-
+    conn.query(sql, [channelTitle, id], (err) => {
+      if (err) return next(err);
       res.status(201).json({ message: "채널이름이 수정되었습니다." });
     });
   })
   .delete((req, res) => {
     const { id } = req.params;
 
-    const selectSqL = "SELECT name FROM channels WHERE id = ?";
-    const deleteSql = "DELETE FROM channels WHERE id = ?";
-
-    conn.query(selectSqL, [id], (err, results) => {
-      if (results.length === 0) {
-        return res.status(404).json({ message: "채널을 찾을 수 없습니다." });
-      }
-
+    getChannelUseId(id, (err, results) => {
+      if (err) return next(err);
       const channelName = results[0].name;
+
+      const deleteSql = "DELETE FROM channels WHERE id = ?";
 
       conn.query(deleteSql, [id], () => {
         res.status(200).json({
@@ -80,16 +95,24 @@ router
       });
     });
   })
-  .get((req, res) => {
+  .get((req, res, next) => {
     const { id } = req.params;
 
-    const sql = "SELECT * FROM channels WHERE id = ?";
-
-    conn.query(sql, [id], (err, results) => {
-      if (results.length < 1) notFoundChannel(res);
+    getChannelUseId(id, (err, results) => {
+      if (err) return next(err);
+      if (results.length < 1) {
+        return res
+          .status(404)
+          .json({ message: "채널 정보를 찾을 수 없습니다." });
+      }
 
       res.status(200).json(results);
     });
   });
+
+router.use((err, req, res, next) => {
+  console.error(err);
+  res.status(500).json({ message: "서버 오류가 발생했습니다." });
+});
 
 module.exports = router;

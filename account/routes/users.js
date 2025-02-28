@@ -50,11 +50,13 @@ router.post("/join", (req, res) => {
   res.status(201).json({ message: `${name}님 환영합니다!` });
 });
 
-// 회원 전체 조회
+// 회원 조회
 router.get("/users", (req, res) => {
   const { email } = req.body;
 
-  const sql = "SELECT * FROM users WHERE email=?";
+  const sql = email
+    ? "SELECT * FROM users WHERE email=?"
+    : "SELECT * FROM users";
 
   conn.query(sql, [email], (err, results) => {
     if (results.length) {
